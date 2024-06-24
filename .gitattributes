@@ -1,0 +1,4 @@
+*.png filter=lfs diff=lfs merge=lfs -text
+fashionCORE_v2/models/**/*.json filter=lfs diff=lfs merge=lfs -text
+fashionCORE_v2/models/**/*.csv filter=lfs diff=lfs merge=lfs -text
+fashionCORE_v2/ldm_patched/**/*.txt filter=lfs diff=lfs merge=lfs -text
