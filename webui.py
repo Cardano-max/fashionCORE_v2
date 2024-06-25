@@ -18,6 +18,18 @@ import args_manager
 import copy
 import launch
 
+# Add these imports at the top of the file, after the existing imports
+import sys
+import torch
+from PIL import Image
+from torchvision.transforms import Resize
+
+# Add the Segment-Body directory to the Python path
+segment_body_path = os.path.join(os.path.dirname(__file__), 'Segment-Body')
+sys.path.append(segment_body_path)
+
+from SegBody import segment_body
+
 from modules.sdxl_styles import legal_style_names
 from modules.private_logger import get_current_html_path
 from modules.ui_gradio_extensions import reload_javascript
@@ -34,6 +46,12 @@ from modules.util import is_json
 # def get_photopea_url_params():
 #     return "#%7B%22resources%22:%5B%22data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIAAQMAAADOtka5AAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAANQTFRF////p8QbyAAAADZJREFUeJztwQEBAAAAgiD/r25IQAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfBuCAAAB0niJ8AAAAABJRU5ErkJggg==%22%5D%7D"
 
+def generate_cloth_mask(image_path):
+    image = Image.open(image_path).convert("RGB")
+    image = Resize((512, 512))(image)
+    seg_image, mask_image = segment_body(image, face=False)
+    mask_image = Resize((512, 512))(mask_image)
+    return mask_image
 
 def get_task(*args):
     args = list(args)
@@ -114,6 +132,20 @@ with shared.gradio_root:
     currentTask = gr.State(worker.AsyncTask(args=[]))
     with gr.Row():
         with gr.Column(scale=2):
+
+            with gr.Tab("Automatic Mask Generation"):
+                with gr.Row():
+                    with gr.Column():
+                        auto_mask_input_image = grh.Image(label='Upload Image for Mask Generation', source='upload', type='filepath')
+                        generate_auto_mask_button = gr.Button("Generate Mask")
+                    with gr.Column():
+                        auto_mask_output = grh.Image(label='Generated Mask')
+                
+                generate_auto_mask_button.click(
+                    fn=generate_cloth_mask,
+                    inputs=[auto_mask_input_image],
+                    outputs=[auto_mask_output]
+                )
             with gr.Tab("fashionCORE"):
                 with gr.Row():
                     progress_window = grh.Image(label='Preview', show_label=True, visible=False, height=768,
@@ -759,7 +791,7 @@ with shared.gradio_root:
             prompt, negative_prompt, translate_prompts, style_selections,
             performance_selection, aspect_ratios_selection, image_number, output_format, image_seed, sharpness, guidance_scale
         ]
-
+        ctrls += [auto_mask_input_image, auto_mask_output]
         ctrls += [base_model, refiner_model, refiner_switch] + lora_ctrls
         ctrls += [input_image_checkbox, current_tab]
         # ctrls += [uov_method, uov_input_image]
